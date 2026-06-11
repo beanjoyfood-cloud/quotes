@@ -383,7 +383,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto
 // ══════════════════════════════════════════
 //  設定區 — 部署後填入 Apps Script 網址
 // ══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwSOZwSfJ09XIAvsGzIkfZ-tXOPe3wMCEF_JrPqNLtEHqDDoC6xYLzIUUU92C5sbFPBrA/exec';  // 填入 Google Apps Script 部署網址
+const API_URL = 'https://script.google.com/macros/s/AKfycbzFOJzcbiVqBtivA6aiukinFHq8sfQ914yir1TzPO2oZaZ4N5ML5Z8i2JJVxhefJTSlQg/exec';  // 填入 Google Apps Script 部署網址
                      // 例：'https://script.google.com/macros/s/AKfy.../exec'
 
 // ── 本機模式（API_URL 為空時使用內建假資料）──
@@ -1025,21 +1025,25 @@ async function apiGet(params) {
 async function apiPost(data) {
   if (LOCAL_MODE) return null;
   try {
-    // Split large payloads: send action via GET params, body via smaller chunks
     const json = JSON.stringify(data);
-    // If small enough, use GET
-    if (json.length < 1500) {
-      const payload = encodeURIComponent(json);
-      const res = await fetch(API_URL + '?payload=' + payload);
-      return await res.json();
-    }
-    // For larger data, use POST (Apps Script accepts both)
+    // Use POST with text/plain to avoid CORS preflight
+    // Apps Script doPost accepts this
     const res = await fetch(API_URL, {
       method: 'POST',
       body: json,
-      headers: { 'Content-Type': 'text/plain' }
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow'
     });
-    return await res.json();
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch(e) {
+      // Try extracting JSON from redirected response
+      const m = text.match(/\{.*\}/s);
+      if (m) return JSON.parse(m[0]);
+      console.error('Response not JSON:', text.slice(0,200));
+      return null;
+    }
   } catch(e) {
     console.error('API error:', e);
     return null;
