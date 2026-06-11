@@ -1025,14 +1025,13 @@ async function apiGet(params) {
 async function apiPost(data) {
   if (LOCAL_MODE) return null;
   try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    // Use GET with payload to bypass CORS restrictions
+    const payload = encodeURIComponent(JSON.stringify(data));
+    const url = API_URL + '?payload=' + payload;
+    const res = await fetch(url, { method: 'GET' });
     return await res.json();
   } catch(e) {
-    console.error('API POST error:', e);
+    console.error('API error:', e);
     return null;
   }
 }
